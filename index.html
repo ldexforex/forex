@@ -415,17 +415,30 @@
           <div class="box-resumo"><span class="zero">Zero a Zero: </span><span id="qtdZeros">0</span></div>
           <div class="box-resumo"><span>Resultado Mês: </span><span id="resultadoMesVal" style="font-weight: bold;">$ 0,00</span></div>
         </div>
-        <div class="grid-graficos">
+        <div class="grid-graficos" style="grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));">
           <div>
             <h4 style="margin-top: 0;">Evolução do Capital</h4>
             <div class="container-grafico"><canvas id="graficoLinha"></canvas></div>
           </div>
           <div>
-            <h4 style="margin-top: 0;">Distribuição de Resultados (Barras)</h4>
-            <div class="container-grafico"><canvas id="graficoBarra"></canvas></div>
+            <h4 style="margin-top: 0;">Tabela de Resultados por Horário</h4>
+            <div class="container-grafico" style="height: 250px; overflow-y: auto; padding: 0;">
+              <table style="font-size: 13px; margin: 0; width: 100%;">
+                <thead>
+                  <tr>
+                    <th>Horário</th>
+                    <th style="color: #04d361;">Ganhos</th>
+                    <th style="color: #f75a68;">Perdas</th>
+                  </tr>
+                </thead>
+                <tbody id="tabelaHorariosCorpo">
+                  <tr><td colspan="3" style="text-align:center; color:#8d8d99;">Sem dados</td></tr>
+                </tbody>
+              </table>
+            </div>
           </div>
           <div>
-            <h4 style="margin-top: 0;">Melhores Horários (Ganhos)</h4>
+            <h4 style="margin-top: 0;">Melhores Horários (Ganhos vs Perdas)</h4>
             <div class="container-grafico"><canvas id="graficoCirculo"></canvas></div>
           </div>
         </div>
@@ -605,6 +618,7 @@
       const fase = document.getElementById('faseMesa').value;
       const modoMetaSelect = document.getElementById('modoMetaMesa');
       const inputMeta = document.getElementById('metaFaseMesa');
+
       if (fase === 'Conta Real (Financiada)') {
         modoMetaSelect.style.display = 'block';
         alternarCampoMetaForm();
@@ -619,6 +633,7 @@
     function alternarCampoMetaForm() {
       const modo = document.getElementById('modoMetaMesa').value;
       const inputMeta = document.getElementById('metaFaseMesa');
+
       if (modo === 'sem_meta') {
         inputMeta.style.display = 'none';
         inputMeta.required = false;
@@ -633,6 +648,7 @@
     function verificarOpcaoMetaModal() {
       const fase = document.getElementById('modalNovaFase').value;
       const modoMetaSelect = document.getElementById('modalModoMeta');
+
       if (fase === 'Conta Real (Financiada)') {
         modoMetaSelect.style.display = 'block';
         alternarCampoMetaModal();
@@ -645,6 +661,7 @@
     function alternarCampoMetaModal() {
       const modo = document.getElementById('modalModoMeta').value;
       const container = document.getElementById('containerModalInputMeta');
+
       if (modo === 'sem_meta') {
         container.style.display = 'none';
         document.getElementById('modalNovaMeta').value = '';
@@ -656,6 +673,7 @@
     // --- LÓGICA DE MESAS PROPRIETÁRIAS ---
     let mesas = JSON.parse(localStorage.getItem('mesasProprietarias')) || [];
     let mesaEmEdicaoIndex = null;
+
     const formMesa = document.getElementById('formMesa');
     const containerMesas = document.getElementById('listaMesas');
 
@@ -665,14 +683,17 @@
         containerMesas.innerHTML = '<p style="color: #8d8d99;">Nenhuma mesa proprietária cadastrada.</p>';
         return;
       }
+
       mesas.forEach((m, index) => {
         const card = document.createElement('div');
         card.className = 'card-mesa';
+
         const lucroFaseAtual = m.saldoAtualFase || 0;
         const classeLucro = lucroFaseAtual >= 0 ? 'ganho' : 'perda';
         const temMeta = m.metaFase && m.metaFase > 0;
         const faltante = temMeta ? m.metaFase - lucroFaseAtual : 0;
         let pctProgresso = 0;
+
         if (temMeta) {
           pctProgresso = (lucroFaseAtual / m.metaFase) * 100;
           if (pctProgresso < 0) pctProgresso = 0;
@@ -747,12 +768,15 @@
       e.preventDefault();
       const selectMesa = document.getElementById('nomeMesa');
       let nomeMesaFinal = selectMesa.value;
+
       if (!nomeMesaFinal) {
         alert("Por favor, adicione ou selecione uma mesa proprietária.");
         return;
       }
+
       const faseSelecionada = document.getElementById('faseMesa').value;
       let valorMeta = 0;
+
       if (faseSelecionada === 'Conta Real (Financiada)') {
         const modo = document.getElementById('modoMetaMesa').value;
         if (modo === 'com_meta') {
@@ -761,6 +785,7 @@
       } else {
         valorMeta = parseFloat(document.getElementById('metaFaseMesa').value) || 0;
       }
+
       const novaMesa = {
         nome: nomeMesaFinal,
         capital: parseFloat(document.getElementById('capitalMesa').value),
@@ -770,6 +795,7 @@
         historicoFaseAtual: [],
         historicoPassado: []
       };
+
       mesas.push(novaMesa);
       localStorage.setItem('mesasProprietarias', JSON.stringify(mesas));
       formMesa.reset();
@@ -795,6 +821,7 @@
       const m = mesas[mesaEmEdicaoIndex];
       const novaFase = document.getElementById('modalNovaFase').value;
       let novaMeta = 0;
+
       if (novaFase === 'Conta Real (Financiada)') {
         const modo = document.getElementById('modalModoMeta').value;
         if (modo === 'com_meta') {
@@ -803,6 +830,7 @@
       } else {
         novaMeta = parseFloat(document.getElementById('modalNovaMeta').value) || 0;
       }
+
       if (!m.historicoPassado) m.historicoPassado = [];
       m.historicoPassado.push({
         nomeFase: m.fase,
@@ -810,10 +838,12 @@
         lucroTotalFase: m.saldoAtualFase,
         operacoes: [...(m.historicoFaseAtual || [])]
       });
+
       m.fase = novaFase;
       m.metaFase = novaMeta;
       m.saldoAtualFase = 0;
       m.historicoFaseAtual = [];
+
       localStorage.setItem('mesasProprietarias', JSON.stringify(mesas));
       fecharModalFase();
       renderizarMesas();
@@ -823,6 +853,7 @@
       const m = mesas[index];
       const container = document.getElementById('conteudoHistoricoAnterior');
       container.innerHTML = '';
+
       if (!m.historicoPassado || m.historicoPassado.length === 0) {
         container.innerHTML = '<p>Nenhum histórico disponível.</p>';
       } else {
@@ -853,17 +884,23 @@
     window.adicionarTradeMesa = function(index) {
       const selectTipo = document.getElementById(`tipoResMesa_${index}`);
       const inputVal = document.getElementById(`valMesa_${index}`);
+
       const resultado = selectTipo.value;
       const valorBruto = Math.abs(parseFloat(inputVal.value) || 0);
+
       if (valorBruto === 0 && resultado !== 'Zero a Zero') return;
+
       const valorFinal = resultado === 'Ganho' ? valorBruto : (resultado === 'Perda' ? -valorBruto : 0);
+
       if (!mesas[index].historicoFaseAtual) mesas[index].historicoFaseAtual = [];
+
       const hojeData = new Date().toISOString().split('T')[0];
       mesas[index].historicoFaseAtual.unshift({
         data: hojeData,
         resultado: resultado,
         valor: valorFinal
       });
+
       mesas[index].saldoAtualFase += valorFinal;
       localStorage.setItem('mesasProprietarias', JSON.stringify(mesas));
       renderizarMesas();
@@ -878,6 +915,7 @@
         trade: trade
       };
       document.getElementById('btnDesfazerMesas').disabled = false;
+
       mesas[mesaIndex].saldoAtualFase -= trade.valor;
       mesas[mesaIndex].historicoFaseAtual.splice(tradeIndex, 1);
       localStorage.setItem('mesasProprietarias', JSON.stringify(mesas));
@@ -892,6 +930,7 @@
           mesa: mesas[index]
         };
         document.getElementById('btnDesfazerMesas').disabled = false;
+
         mesas.splice(index, 1);
         localStorage.setItem('mesasProprietarias', JSON.stringify(mesas));
         renderizarMesas();
@@ -900,6 +939,7 @@
 
     function desfazerExclusaoMesas() {
       if (!ultimaExclusaoMesas) return;
+
       if (ultimaExclusaoMesas.tipo === 'mesa') {
         mesas.splice(ultimaExclusaoMesas.index, 0, ultimaExclusaoMesas.mesa);
       } else if (ultimaExclusaoMesas.tipo === 'trade') {
@@ -909,6 +949,7 @@
           mesas[mesaIndex].saldoAtualFase += trade.valor;
         }
       }
+
       localStorage.setItem('mesasProprietarias', JSON.stringify(mesas));
       ultimaExclusaoMesas = null;
       document.getElementById('btnDesfazerMesas').disabled = true;
@@ -948,31 +989,8 @@
           fill: true,
           tension: 0.2,
           borderWidth: 2,
-          pointRadius: 4,
+          pointRadius: 2,
           pointBackgroundColor: '#00b4d8'
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: { legend: { labels: { color: '#e1e1e6' } } },
-        scales: {
-          x: { ticks: { color: '#8d8d99' }, grid: { color: '#29292e' } },
-          y: { ticks: { color: '#8d8d99' }, grid: { color: '#29292e' } }
-        }
-      }
-    });
-
-    const ctxBarra = document.getElementById('graficoBarra').getContext('2d');
-    let graficoBarra = new Chart(ctxBarra, {
-      type: 'bar',
-      data: {
-        labels: ['Ganhos', 'Perdas', 'Zero a Zero'],
-        datasets: [{
-          label: 'Quantidade',
-          data: [0, 0, 0],
-          backgroundColor: ['#04d361', '#f75a68', '#8d8d99'],
-          borderRadius: 4
         }]
       },
       options: {
@@ -980,39 +998,44 @@
         maintainAspectRatio: false,
         plugins: { legend: { display: false } },
         scales: {
-          x: { ticks: { color: '#e1e1e6' }, grid: { display: false } },
-          y: { ticks: { color: '#8d8d99', stepSize: 1 }, grid: { color: '#29292e' }, beginAtZero: true }
+          x: { display: false },
+          y: { ticks: { color: '#8d8d99' }, grid: { color: '#29292e' } }
         }
       }
     });
 
     const ctxCirculo = document.getElementById('graficoCirculo').getContext('2d');
     let graficoCirculo = new Chart(ctxCirculo, {
-      type: 'doughnut',
+      type: 'bar',
       data: {
-        labels: ['Sem dados de horas'],
-        datasets: [{
-          data: [1],
-          backgroundColor: ['#323238'],
-          borderWidth: 1,
-          borderColor: '#202024'
-        }]
+        labels: [],
+        datasets: [
+          {
+            label: 'Ganhos',
+            data: [],
+            backgroundColor: '#04d361',
+            borderRadius: 4
+          },
+          {
+            label: 'Perdas',
+            data: [],
+            backgroundColor: '#f75a68',
+            borderRadius: 4
+          }
+        ]
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
         plugins: {
           legend: {
-            position: 'bottom',
+            position: 'top',
             labels: { color: '#e1e1e6' }
-          },
-          tooltip: {
-            callbacks: {
-              label: function(context) {
-                return ` ${context.label}: ${context.raw} ganho(s)`;
-              }
-            }
           }
+        },
+        scales: {
+          x: { ticks: { color: '#e1e1e6' }, grid: { display: false } },
+          y: { ticks: { color: '#8d8d99', stepSize: 1 }, grid: { color: '#29292e' }, beginAtZero: true }
         }
       }
     });
@@ -1055,7 +1078,6 @@
         document.getElementById('riscoLossVal').textContent = '$ 0,00';
       }
     }
-
     inputRiscoPct.addEventListener('input', atualizarCalculadoraRisco);
 
     function renderizarDados(listaParaExibir, tituloCustom = "Resumo Mensal") {
@@ -1064,7 +1086,6 @@
       let labelsGrafico = ['Início'];
       let dadosGrafico = [0];
       let acumulado = 0;
-      let contagemHorasGanhos = {};
 
       listaParaExibir.forEach((op) => {
         let indexOriginal = operacoes.indexOf(op);
@@ -1077,8 +1098,6 @@
         if (op.resultado === 'Ganho') {
           classeCor = 'ganho'; 
           g++;
-          let horaFormatada = op.hora ? op.hora.split(':')[0] + ':00h' : 'Sem Hora';
-          contagemHorasGanhos[horaFormatada] = (contagemHorasGanhos[horaFormatada] || 0) + 1;
         }
         else if (op.resultado === 'Perda') { classeCor = 'perda'; p++; }
         else { z++; }
@@ -1102,7 +1121,6 @@
       document.getElementById('qtdGanhos').textContent = g;
       document.getElementById('qtdPerdas').textContent = p;
       document.getElementById('qtdZeros').textContent = z;
-
       const elTotalMes = document.getElementById('resultadoMesVal');
       elTotalMes.textContent = `${totalMes >= 0 ? '+' : ''}$ ${totalMes.toFixed(2)}`;
       elTotalMes.className = totalMes > 0 ? 'ganho' : (totalMes < 0 ? 'perda' : 'zero');
@@ -1111,22 +1129,46 @@
       graficoLinha.data.datasets[0].data = dadosGrafico;
       graficoLinha.update();
 
-      graficoBarra.data.datasets[0].data = [g, p, z];
-      graficoBarra.update();
+      // Processar estatísticas por horário vinculadas ao filtro atual (listaParaExibir)
+      let estatisticasHorarios = {};
+      listaParaExibir.forEach(op => {
+        let horaFormatada = op.hora ? op.hora.split(':')[0] + ':00h' : 'Sem Hora';
+        if (!estatisticasHorarios[horaFormatada]) {
+          estatisticasHorarios[horaFormatada] = { ganhos: 0, perdas: 0 };
+        }
+        if (op.resultado === 'Ganho') {
+          estatisticasHorarios[horaFormatada].ganhos += 1;
+        } else if (op.resultado === 'Perda') {
+          estatisticasHorarios[horaFormatada].perdas += 1;
+        }
+      });
 
-      let labelsHoras = Object.keys(contagemHorasGanhos);
-      let valoresHoras = Object.values(contagemHorasGanhos);
-      if (labelsHoras.length > 0) {
-        let coresPalette = ['#04d361', '#00b4d8', '#eab308', '#a855f7', '#ec4899', '#3b82f6', '#10b981', '#f97316'];
-        let coresFinais = labelsHoras.map((_, i) => coresPalette[i % coresPalette.length]);
-        graficoCirculo.data.labels = labelsHoras;
-        graficoCirculo.data.datasets[0].data = valoresHoras;
-        graficoCirculo.data.datasets[0].backgroundColor = coresFinais;
+      // Atualizar Tabela de Horários (sem coluna de valor em $)
+      const tbodyHorarios = document.getElementById('tabelaHorariosCorpo');
+      tbodyHorarios.innerHTML = '';
+      let horasOrdenadas = Object.keys(estatisticasHorarios).sort();
+      if (horasOrdenadas.length === 0) {
+        tbodyHorarios.innerHTML = '<tr><td colspan="3" style="text-align:center; color:#8d8d99;">Sem dados para o mês selecionado</td></tr>';
       } else {
-        graficoCirculo.data.labels = ['Sem operações de ganho'];
-        graficoCirculo.data.datasets[0].data = [1];
-        graficoCirculo.data.datasets[0].backgroundColor = ['#323238'];
+        horasOrdenadas.forEach(hora => {
+          let stat = estatisticasHorarios[hora];
+          let tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td><strong>${hora}</strong></td>
+            <td class="ganho">${stat.ganhos}</td>
+            <td class="perda">${stat.perdas}</td>
+          `;
+          tbodyHorarios.appendChild(tr);
+        });
       }
+
+      // Atualizar Gráfico de Melhores Horários (Ganhos vs Perdas) vinculado ao mês
+      let dadosGanhosHoras = horasOrdenadas.map(h => estatisticasHorarios[h].ganhos);
+      let dadosPerdasHoras = horasOrdenadas.map(h => estatisticasHorarios[h].perdas);
+
+      graficoCirculo.data.labels = horasOrdenadas.length > 0 ? horasOrdenadas : ['Sem dados'];
+      graficoCirculo.data.datasets[0].data = dadosGanhosHoras.length > 0 ? dadosGanhosHoras : [0];
+      graficoCirculo.data.datasets[1].data = dadosPerdasHoras.length > 0 ? dadosPerdasHoras : [0];
       graficoCirculo.update();
     }
 
@@ -1140,24 +1182,19 @@
       renderizarDados(filtradas, `Resumo - ${nomeMes} / ${ano}`);
     }
 
-    // --- FUNÇÃO EXPORTAR PDF (AJUSTADA PARA CORRIGIR IMAGEM PRETA) ---
+    // --- FUNÇÃO EXPORTAR PDF ---
     function exportarHistoricoPDF() {
       const elemento = document.getElementById('cardHistoricoMensal');
       const mesSelect = document.getElementById('filtroMes');
       const mes = mesSelect.options[mesSelect.selectedIndex] ? mesSelect.options[mesSelect.selectedIndex].text : 'Mensal';
       const ano = document.getElementById('filtroAno').value || '';
 
-      // Ocultar temporariamente botões de ação e painel de busca para impressão limpa
       const acoesHeaders = elemento.querySelectorAll('.col-acoes');
       const painelBusca = elemento.querySelector('.painel-busca');
       
       acoesHeaders.forEach(el => el.style.display = 'none');
       if (painelBusca) painelBusca.style.display = 'none';
 
-      // Configuração ajustada do html2pdf/html2canvas para evitar tela preta em tema escuro:
-      // 1. scrollY/scrollX zerados garantem captura correta independente da rolagem.
-      // 2. backgroundColor explícito '#202024' impede que html2canvas capture o canvas transparente ou em preto padrão.
-      // 3. windowWidth garante renderização completa.
       const opt = {
         margin:       [10, 10, 10, 10],
         filename:     `Historico_Operacoes_${mes}_${ano}.pdf`,
@@ -1190,20 +1227,24 @@
           operacao: operacoes[index]
         };
         document.getElementById('btnDesfazerDiario').disabled = false;
+
         operacoes.splice(index, 1);
         localStorage.setItem('operacoes', JSON.stringify(operacoes));
         bomSaldoGeral();
         filtrarPorMesEAno();
+
         if (indiceEdicao === index) cancelarEdicao();
       }
     };
 
     function desfazerExclusaoDiario() {
       if (!ultimaExclusaoDiario) return;
+
       operacoes.splice(ultimaExclusaoDiario.index, 0, ultimaExclusaoDiario.operacao);
       localStorage.setItem('operacoes', JSON.stringify(operacoes));
       ultimaExclusaoDiario = null;
       document.getElementById('btnDesfazerDiario').disabled = true;
+
       bomSaldoGeral();
       filtrarPorMesEAno();
     }
@@ -1211,14 +1252,17 @@
     window.prepararEdicao = function(index) {
       const op = operacoes[index];
       indiceEdicao = index;
+
       inputData.value = op.data;
       inputHora.value = op.hora || '';
       selectPar.value = op.par;
       selectTipoResultado.value = op.resultado;
       inputValor.value = Math.abs(op.valor);
+
       tituloFormulario.textContent = "Editar Operação";
       btnSalvarOperacao.textContent = "Atualizar Operação";
       btnCancelarEdicao.style.display = "inline-block";
+
       window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
@@ -1227,6 +1271,7 @@
       document.getElementById('tradeForm').reset();
       const hojeNow = new Date();
       inputHora.value = hojeNow.toTimeString().substring(0, 5);
+
       tituloFormulario.textContent = "Registrador Nova Operação";
       btnSalvarOperacao.textContent = "Salvar Operação";
       btnCancelarEdicao.style.display = "none";
@@ -1242,7 +1287,8 @@
 
     document.getElementById('btnSalvarAtivo').addEventListener('click', function() {
       let txt = document.getElementById('novoAtivo').value.trim().toUpperCase();
-      if (txt !== '' && !ativos.includes(txt)) {        ativos.push(txt);
+      if (txt !== '' && !ativos.includes(txt)) {
+        ativos.push(txt);
         localStorage.setItem('ativos', JSON.stringify(ativos));
         atualizarSeletor();
         selectPar.value = txt;
@@ -1257,6 +1303,7 @@
       let par = selectPar.value;
       let resultado = selectTipoResultado.value;
       let valorBruto = Math.abs(parseFloat(inputValor.value) || 0);
+
       let valor = resultado === 'Ganho' ? valorBruto : (resultado === 'Perda' ? -valorBruto : 0);
 
       if (indiceEdicao !== null) {
@@ -1266,6 +1313,7 @@
         operacoes.push({ data, hora, par, resultado, valor });
         inputValor.value = '';
       }
+
       localStorage.setItem('operacoes', JSON.stringify(operacoes));
       bomSaldoGeral();
       filtrarPorMesEAno();
