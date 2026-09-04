@@ -420,6 +420,9 @@
         <div class="secao-adicionar-ativo">
           <input type="text" id="novoAtivo" placeholder="Novo Ativo (Ex: BTC/USD)">
           <button type="button" class="btn-secundario" id="btnSalvarAtivo">Salvar Ativo</button>
+          
+          <select id="selectExcluirAtivo" style="margin-left: 15px;"></select>
+          <button type="button" class="btn-excluir" onclick="excluirAtivoSelecionado()">✕ Excluir Ativo</button>
         </div>
         <form id="tradeForm">
           <input type="date" id="data" required>
@@ -1480,12 +1483,42 @@
 
     function atualizarSeletor() {
       selectPar.innerHTML = '';
+      const selectExcluir = document.getElementById('selectExcluirAtivo');
+      if (selectExcluir) selectExcluir.innerHTML = '';
+
+      if (ativos.length === 0) {
+        selectPar.innerHTML = '<option value="">Sem ativos cadastrados</option>';
+        if (selectExcluir) selectExcluir.innerHTML = '<option value="">Nenhum ativo</option>';
+        return;
+      }
+
       ativos.forEach(item => {
         let opt = document.createElement('option');
         opt.value = item;
         opt.textContent = item;
         selectPar.appendChild(opt);
+
+        if (selectExcluir) {
+          let opt2 = document.createElement('option');
+          opt2.value = item;
+          opt2.textContent = item;
+          selectExcluir.appendChild(opt2);
+        }
       });
+    }
+
+    function excluirAtivoSelecionado() {
+      const select = document.getElementById('selectExcluirAtivo');
+      if (!select) return;
+      const ativoParaRemover = select.value;
+
+      if (!ativoParaRemover) return;
+
+      if (confirm(`Deseja excluir o ativo "${ativoParaRemover}" da lista?`)) {
+        ativos = ativos.filter(a => a !== ativoParaRemover);
+        localStorage.setItem('ativos', JSON.stringify(ativos));
+        atualizarSeletor();
+      }
     }
 
     function bomSaldoGeral() {
