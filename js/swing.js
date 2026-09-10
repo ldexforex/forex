@@ -152,6 +152,7 @@ document.getElementById('formSwingTrade').addEventListener('submit', async funct
   const novoSwing = {
     data: document.getElementById('swingData').value,
     ativo: document.getElementById('swingAtivo').value,
+    mercado: document.getElementById('swingMercado').value,
     tipo: document.getElementById('swingTipo').value,
     estado: estadoVal,
     resultadoTipo: resultadoTipoVal,
@@ -210,6 +211,7 @@ window.renderizarSwingTrades = function(lista) {
     tr.innerHTML = `
       <td>${st.data}</td>
       <td><strong>${st.ativo}</strong></td>
+      <td>${st.mercado || '-'}</td>
       <td>${st.tipo}</td>
       <td>${estadoBadge}</td>
       <td>${textoResultado}</td>
@@ -265,7 +267,7 @@ window.desfazerExclusaoSwing = async function() {
   const t = ultimaExclusaoSwing.trade;
   
   await setDoc(doc(db, "users", userUid, "swingTrades", t.id), {
-    data: t.data, ativo: t.ativo, tipo: t.tipo, estado: t.estado, resultadoTipo: t.resultadoTipo, resultado: t.resultado
+    data: t.data, ativo: t.ativo, mercado: t.mercado || 'B3', tipo: t.tipo, estado: t.estado, resultadoTipo: t.resultadoTipo, resultado: t.resultado
   });
   
   ultimaExclusaoSwing = null;
@@ -275,6 +277,7 @@ window.desfazerExclusaoSwing = async function() {
 window.filtrarSwingTrades = function() {
   const mes = document.getElementById('filtroMesSwing').value;
   const ano = document.getElementById('filtroAnoSwing').value;
+  const mercado = document.getElementById('filtroMercadoSwing') ? document.getElementById('filtroMercadoSwing').value : 'Todos';
   
   if (!ano) {
     window.renderizarSwingTrades(swingTrades);
@@ -282,7 +285,11 @@ window.filtrarSwingTrades = function() {
   }
 
   const busca = `${ano}-${mes}`;
-  const filtrados = swingTrades.filter(st => st.data.startsWith(busca));
+  const filtrados = swingTrades.filter(st => {
+    const dataMatch = st.data.startsWith(busca);
+    const mercadoMatch = (mercado === 'Todos') || (st.mercado === mercado) || (!st.mercado && mercado === 'B3');
+    return dataMatch && mercadoMatch;
+  });
   window.renderizarSwingTrades(filtrados);
 };
 document.querySelector('#filtroMesSwing').parentElement.querySelector('button.btn-secundario').addEventListener('click', window.filtrarSwingTrades);
@@ -295,7 +302,15 @@ window.exportarHistoricoSwingPDF = function() {
   acoes.forEach(el => el.style.display = 'none');
   if (painelBusca) painelBusca.style.display = 'none';
 
-  html2pdf().from(elemento).save().then(() => {
+  const opt = {
+    margin:       0.5,
+    filename:     `Historico_SwingTrade_${new Date().toLocaleString()}.pdf`,
+    image:        { type: 'jpeg', quality: 0.98 },
+    html2canvas:  { scale: 2 },
+    jsPDF:        { unit: 'in', format: 'a4', orientation: 'landscape' }
+  };
+
+  html2pdf().set(opt).from(elemento).save().then(() => {
     acoes.forEach(el => el.style.display = '');
     if (painelBusca) painelBusca.style.display = '';
   });

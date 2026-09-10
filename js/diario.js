@@ -225,6 +225,7 @@ function renderizarDados(listaParaExibir, tituloCustom = "Resumo Mensal") {
       <td>${op.data}</td>
       <td>${op.hora || '--:--'}</td>
       <td>${op.par}</td>
+      <td>${op.mercado || '-'}</td>
       <td class="${classeCor}">${op.resultado}</td>
       <td class="${classeCor}">${op.valor >= 0 ? '+' : ''}$ ${op.valor.toFixed(2)}</td>
       <td class="col-acoes">
@@ -282,16 +283,23 @@ function renderizarDados(listaParaExibir, tituloCustom = "Resumo Mensal") {
 function filtrarPorMesEAno() {
   const mes = document.getElementById('filtroMes').value;
   const ano = document.getElementById('filtroAno').value;
+  const mercado = document.getElementById('filtroMercado') ? document.getElementById('filtroMercado').value : 'Todos';
   if (!ano) return;
   const chaveBusca = `${ano}-${mes}`;
-  const filtradas = operacoes.filter(op => op.data.startsWith(chaveBusca));
+  const filtradas = operacoes.filter(op => {
+    const dataMatch = op.data.startsWith(chaveBusca);
+    const mercadoMatch = (mercado === 'Todos') || (op.mercado === mercado) || (!op.mercado && mercado === 'B3');
+    return dataMatch && mercadoMatch;
+  });
   const nomeMes = document.getElementById('filtroMes').options[document.getElementById('filtroMes').selectedIndex].text;
-  renderizarDados(filtradas, `Resumo - ${nomeMes} / ${ano}`);
+  let tituloMercado = mercado === 'Todos' ? '' : ` (${mercado})`;
+  renderizarDados(filtradas, `Resumo - ${nomeMes} / ${ano}${tituloMercado}`);
 }
 window.filtrarPorMesEAno = filtrarPorMesEAno;
 document.getElementById('btnPesquisar').addEventListener('click', filtrarPorMesEAno);
 
 document.getElementById('btnVerTodos').addEventListener('click', function() {
+  if (document.getElementById('filtroMercado')) document.getElementById('filtroMercado').value = 'Todos';
   renderizarDados(operacoes, "Resumo Geral");
 });
 
@@ -299,13 +307,52 @@ window.exportarHistoricoPDF = function() {
   const elemento = document.getElementById('cardHistoricoMensal');
   const acoesHeaders = elemento.querySelectorAll('.col-acoes');
   const painelBusca = elemento.querySelector('.painel-busca');
+  
+  if (!elemento) {
+    console.error("Elemento 'cardHistoricoMensal' não encontrado.");
+    alert("Erro: Não foi possível encontrar os dados para exportar.");
+    return;
+  }
+
+  // Solução para o bug do html2canvas gerando PDF em branco quando a tela está rolada
+  const originalScrollY = window.scrollY;
+  window.scrollTo(0, 0);
+
   acoesHeaders.forEach(el => el.style.display = 'none');
   if (painelBusca) painelBusca.style.display = 'none';
 
-  html2pdf().from(elemento).save().then(() => {
+  const opt = {
+    margin: 0.5,
+    filename: `Diario_Operacoes_${new Date().toLocaleString()}.pdf`,
+    image: { type: 'jpeg', quality: 0.98 },
+    html2canvas: { 
+      scale: 2, 
+      scrollY: 0, 
+      windowWidth: document.documentElement.offsetWidth
+    },
+    jsPDF: { unit: 'in', format: 'a4', orientation: 'landscape' },
+    pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+  };
+
+  try {
+    html2pdf().set(opt).from(elemento).save().then(() => {
+      acoesHeaders.forEach(el => el.style.display = '');
+      if (painelBusca) painelBusca.style.display = '';
+      window.scrollTo(0, originalScrollY);
+    }).catch((error) => {
+      console.error("Erro na promise do html2pdf:", error);
+      alert("Ocorreu um erro ao gerar o PDF. Verifique os dados ou consulte o console.");
+      acoesHeaders.forEach(el => el.style.display = '');
+      if (painelBusca) painelBusca.style.display = '';
+      window.scrollTo(0, originalScrollY);
+    });
+  } catch (error) {
+    console.error("Erro fatal ao iniciar a exportação:", error);
+    alert("Erro crítico ao iniciar a geração do PDF.");
     acoesHeaders.forEach(el => el.style.display = '');
     if (painelBusca) painelBusca.style.display = '';
-  });
+    window.scrollTo(0, originalScrollY);
+  }
 };
 
 window.excluirOperacao = async function(index) {
@@ -324,7 +371,7 @@ window.desfazerExclusaoDiario = async function() {
   if (!ultimaExclusaoDiario) return;
   const op = ultimaExclusaoDiario.operacao;
   await setDoc(doc(db, "users", userUid, "operacoes", op.id), {
-    data: op.data, hora: op.hora, par: op.par, resultado: op.resultado, valor: op.valor
+    data: op.data, hora: op.hora, par: op.par, mercado: op.mercado || 'B3', resultado: op.resultado, valor: op.valor
   });
   
   ultimaExclusaoDiario = null;
@@ -337,6 +384,7 @@ window.prepararEdicao = function(index) {
   inputData.value = op.data;
   inputHora.value = op.hora || '';
   selectPar.value = op.par;
+  document.getElementById('mercado').value = op.mercado || 'B3';
   selectTipoResultado.value = op.resultado;
   inputValor.value = Math.abs(op.valor);
   tituloFormulario.textContent = "Editar Operação";
@@ -376,16 +424,17 @@ document.getElementById('tradeForm').addEventListener('submit', async function(e
   let data = inputData.value;
   let hora = inputHora.value;
   let par = selectPar.value;
+  let mercado = document.getElementById('mercado').value;
   let resultado = selectTipoResultado.value;
   let valorBruto = Math.abs(parseFloat(inputValor.value) || 0);
   let valor = resultado === 'Ganho' ? valorBruto : (resultado === 'Perda' ? -valorBruto : 0);
 
   if (indiceEdicao !== null) {
     const op = operacoes[indiceEdicao];
-    await updateDoc(doc(db, "users", userUid, "operacoes", op.id), { data, hora, par, resultado, valor });
+    await updateDoc(doc(db, "users", userUid, "operacoes", op.id), { data, hora, par, mercado, resultado, valor });
     window.cancelarEdicao();
   } else {
-    await addDoc(collection(db, "users", userUid, "operacoes"), { data, hora, par, resultado, valor });
+    await addDoc(collection(db, "users", userUid, "operacoes"), { data, hora, par, mercado, resultado, valor });
     inputValor.value = '';
   }
 });

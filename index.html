@@ -136,6 +136,10 @@
           <input type="date" id="data" required>
           <input type="time" id="hora" required>
           <select id="par" required></select>
+          <select id="mercado" required>
+            <option value="B3">B3</option>
+            <option value="FOREX">FOREX</option>
+          </select>
           <select id="tipoResultado" required>
             <option value="Ganho">Ganho</option>
             <option value="Perda">Perda</option>
@@ -196,6 +200,11 @@
             <option value="10">Outubro</option><option value="11">Novembro</option><option value="12">Dezembro</option>
           </select>
           <input type="number" id="filtroAno" placeholder="Ano" style="width: 80px;">
+          <select id="filtroMercado" style="margin-left: 10px;">
+            <option value="Todos">Todos Mercados</option>
+            <option value="B3">B3</option>
+            <option value="FOREX">FOREX</option>
+          </select>
           <button type="button" class="btn-secundario" id="btnPesquisar">Pesquisar</button>
           <button type="button" id="btnVerTodos">Ver Todos</button>
           <button type="button" class="btn-pdf" id="btnExportarPDF" onclick="exportarHistoricoPDF()">📄 Exportar PDF</button>
@@ -204,7 +213,7 @@
         <div id="areaTabelaPDF">
           <table>
             <thead>
-              <tr><th>Data</th><th>Horário</th><th>Ativo</th><th>Resultado</th><th>Valor ($)</th><th class="col-acoes">Ações</th></tr>
+              <tr><th>Data</th><th>Horário</th><th>Ativo</th><th>Mercado</th><th>Resultado</th><th>Valor ($)</th><th class="col-acoes">Ações</th></tr>
             </thead>
             <tbody id="tabelaCorpo"></tbody>
           </table>
@@ -241,6 +250,11 @@
           
           <select id="swingAtivo" required></select>
 
+          <select id="swingMercado" required>
+            <option value="B3">B3</option>
+            <option value="FOREX">FOREX</option>
+          </select>
+
           <select id="swingTipo" required>
             <option value="Compra">Compra</option>
             <option value="Venda">Venda</option>
@@ -274,9 +288,15 @@
             <option value="10">Outubro</option><option value="11">Novembro</option><option value="12">Dezembro</option>
           </select>
           <input type="number" id="filtroAnoSwing" placeholder="Ano" style="width: 90px;">
+
+          <select id="filtroMercadoSwing" style="margin-left: 10px;">
+            <option value="Todos">Todos Mercados</option>
+            <option value="B3">B3</option>
+            <option value="FOREX">FOREX</option>
+          </select>
           
           <button type="button" class="btn-secundario" onclick="filtrarSwingTrades()">Pesquisar</button>
-          <button type="button" onclick="renderizarSwingTrades(swingTrades)">Ver Todos</button>
+          <button type="button" onclick="document.getElementById('filtroMercadoSwing').value = 'Todos'; renderizarSwingTrades(swingTrades)">Ver Todos</button>
           
           <button type="button" class="btn-pdf" style="margin-left: auto;" onclick="exportarHistoricoSwingPDF()">📄 Exportar Histórico PDF</button>
         </div>
@@ -295,6 +315,7 @@
               <tr>
                 <th>Data</th>
                 <th>Ativo</th>
+                <th>Mercado</th>
                 <th>Operação</th>
                 <th>Estado</th>
                 <th>Resultado ($)</th>
