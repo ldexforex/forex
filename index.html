@@ -101,36 +101,58 @@
       </div>
 
       <div class="card">
-        <div class="painel-capital">
-          <div>
-            <label>Capital Inicial ($): </label>
-            <input type="number" id="capitalInicial" placeholder="Ex: 1000" step="0.01">
-            <button type="button" id="btnSalvarCapital">Salvar Capital</button>
+        <div class="painel-capital-container">
+          <div class="painel-capital-inputs">
+            <div class="input-capital-grupo">
+              <label for="capitalInicialUSD">Capital Inicial FOREX ($):</label>
+              <input type="number" id="capitalInicialUSD" placeholder="Ex: 1000.00" step="0.01">
+            </div>
+            <div class="input-capital-grupo">
+              <label for="capitalInicialBRL">Capital Inicial B3 (R$):</label>
+              <input type="number" id="capitalInicialBRL" placeholder="Ex: 5000.00" step="0.01">
+            </div>
+            <button type="button" id="btnSalvarCapital">Salvar Capitais</button>
           </div>
-          <div>
-            <span>Saldo Geral Atual: <span id="saldoAtual" style="color: #00b4d8;">$ 0,00</span></span>
+          <div class="painel-capital-saldos">
+            <div class="box-saldo-card saldo-usd">
+              <span class="label-saldo">Saldo FOREX (USD)</span>
+              <span id="saldoAtualUSD" class="valor-saldo">$ 0.00</span>
+            </div>
+            <div class="box-saldo-card saldo-brl">
+              <span class="label-saldo">Saldo B3 (BRL)</span>
+              <span id="saldoAtualBRL" class="valor-saldo">R$ 0,00</span>
+            </div>
           </div>
         </div>
       </div>
 
       <div class="card">
         <h3>Calculadora de Gerenciamento de Risco</h3>
-        <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-          <label>Porcentagem de risco (%): </label>
-          <input type="number" id="riscoPct" placeholder="Ex: 2" step="0.1" style="width: 100px;">
+        <div style="display: flex; gap: 15px; align-items: center; flex-wrap: wrap; margin-bottom: 15px;">
+          <div>
+            <label for="riscoMercado">Mercado / Moeda: </label>
+            <select id="riscoMercado">
+              <option value="FOREX">FOREX ($ - Dólar)</option>
+              <option value="B3">B3 (R$ - Real)</option>
+            </select>
+          </div>
+          <div>
+            <label for="riscoPct">Porcentagem de risco (%): </label>
+            <input type="number" id="riscoPct" placeholder="Ex: 2" step="0.1" style="width: 100px;">
+          </div>
         </div>
         <div class="grid-risco">
           <div class="box-risco">
-            <label>Valor em Risco ($):</label>
-            <span id="riscoValorVal" style="color: #00b4d8;">$ 0,00</span>
+            <label id="lblRiscoValor">Valor em Risco ($):</label>
+            <span id="riscoValorVal" style="color: #00b4d8;">$ 0.00</span>
           </div>
           <div class="box-risco">
-            <label>Se der Lucro (1:1):</label>
-            <span id="riscoGainVal" class="ganho">$ 0,00</span>
+            <label id="lblRiscoGain">Se der Lucro (1:1):</label>
+            <span id="riscoGainVal" class="ganho">$ 0.00</span>
           </div>
           <div class="box-risco">
-            <label>Se der Loss (1:1):</label>
-            <span id="riscoLossVal" class="perda">$ 0,00</span>
+            <label id="lblRiscoLoss">Se der Loss (1:1):</label>
+            <span id="riscoLossVal" class="perda">$ 0.00</span>
           </div>
         </div>
       </div>
@@ -157,7 +179,7 @@
             <option value="Perda">Perda</option>
             <option value="Zero a Zero">Zero a Zero</option>
           </select>
-          <input type="number" id="valor" placeholder="Valor ($)" step="0.01" required>
+          <input type="number" id="valor" placeholder="Valor (R$)" step="0.01" required>
           <button type="submit" id="btnSalvarOperacao">Salvar Operação</button>
           <button type="button" id="btnCancelarEdicao" class="btn-secundario" style="display: none;">Cancelar Edição</button>
         </form>
@@ -169,7 +191,8 @@
           <div class="box-resumo"><span class="ganho">Ganhos: </span><span id="qtdGanhos">0</span></div>
           <div class="box-resumo"><span class="perda">Perdas: </span><span id="qtdPerdas">0</span></div>
           <div class="box-resumo"><span class="zero">Zero a Zero: </span><span id="qtdZeros">0</span></div>
-          <div class="box-resumo"><span>Resultado Mês: </span><span id="resultadoMesVal" style="font-weight: bold;">$ 0,00</span></div>
+          <div class="box-resumo" id="boxResultadoUSD"><span>Resultado FOREX ($): </span><span id="resultadoMesValUSD" style="font-weight: bold; color: #00b4d8;">$ 0.00</span></div>
+          <div class="box-resumo" id="boxResultadoBRL"><span>Resultado B3 (R$): </span><span id="resultadoMesValBRL" style="font-weight: bold; color: #04d361;">R$ 0,00</span></div>
         </div>
 
         <div class="grid-graficos" style="grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));">
@@ -225,7 +248,7 @@
         <div id="areaTabelaPDF">
           <table>
             <thead>
-              <tr><th>Data</th><th>Horário</th><th>Ativo</th><th>Mercado</th><th>Resultado</th><th>Valor ($)</th><th class="col-acoes">Ações</th></tr>
+              <tr><th>Data</th><th>Horário</th><th>Ativo</th><th>Mercado</th><th>Resultado</th><th>Valor</th><th class="col-acoes">Ações</th></tr>
             </thead>
             <tbody id="tabelaCorpo"></tbody>
           </table>

@@ -3,13 +3,37 @@ import { db } from "./firebase-config.js";
 
 const listaPadraoAtivos = ['EUR/USD', 'GBP/USD', 'USD/JPY', 'AUD/USD', 'USD/CAD', 'XAU/USD'];
 export let capitalInicial = 0;
+export let capitalInicialUSD = 0;
+export let capitalInicialBRL = 0;
 export let operacoes = [];
 export let ativos = [...listaPadraoAtivos];
 
+let saldoCalculadoUSD = 0;
+let saldoCalculadoBRL = 0;
 let saldoCalculadoAtual = 0;
 let indiceEdicao = null;
 let ultimaExclusaoDiario = null;
 let userUid = null;
+
+export function formatarSaldo(valor, mercado) {
+  const sinal = valor < 0 ? '-' : '';
+  const abs = Math.abs(valor);
+  if (mercado === 'FOREX') {
+    return `${sinal}$ ${abs.toFixed(2)}`;
+  } else {
+    return `${sinal}R$ ${abs.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  }
+}
+
+export function formatarMoeda(valor, mercado) {
+  const sinal = valor >= 0 ? '+' : '-';
+  const abs = Math.abs(valor);
+  if (mercado === 'FOREX') {
+    return `${sinal}$ ${abs.toFixed(2)}`;
+  } else {
+    return `${sinal}R$ ${abs.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  }
+}
 
 export function carregarDadosDiario(uid) {
   userUid = uid;
@@ -28,11 +52,24 @@ export function carregarDadosDiario(uid) {
     onSnapshot(doc(db, "users", userUid, "settings", "diario"), (docSnap) => {
       if (docSnap.exists()) {
         const data = docSnap.data();
-        if (data.capitalInicial !== undefined) capitalInicial = data.capitalInicial;
+        if (data.capitalInicialUSD !== undefined) {
+          capitalInicialUSD = parseFloat(data.capitalInicialUSD) || 0;
+        } else if (data.capitalInicial !== undefined) {
+          capitalInicialUSD = parseFloat(data.capitalInicial) || 0;
+        }
+        if (data.capitalInicialBRL !== undefined) {
+          capitalInicialBRL = parseFloat(data.capitalInicialBRL) || 0;
+        }
+        capitalInicial = capitalInicialUSD;
         if (data.ativos) ativos = data.ativos;
       }
       
       if (initialLoadDone) {
+        const inputCapUSD = document.getElementById('capitalInicialUSD');
+        const inputCapBRL = document.getElementById('capitalInicialBRL');
+        if (inputCapUSD && capitalInicialUSD > 0) inputCapUSD.value = capitalInicialUSD;
+        if (inputCapBRL && capitalInicialBRL > 0) inputCapBRL.value = capitalInicialBRL;
+
         atualizarSeletor();
         bomSaldoGeral();
       }
@@ -59,23 +96,28 @@ export function carregarDadosDiario(uid) {
 }
 
 export function iniciarUI() {
-  const inputCapital = document.getElementById('capitalInicial');
+  const inputCapUSD = document.getElementById('capitalInicialUSD');
+  const inputCapBRL = document.getElementById('capitalInicialBRL');
   const inputHora = document.getElementById('hora');
   
-  if (capitalInicial > 0) inputCapital.value = capitalInicial;
+  if (inputCapUSD && capitalInicialUSD > 0) inputCapUSD.value = capitalInicialUSD;
+  if (inputCapBRL && capitalInicialBRL > 0) inputCapBRL.value = capitalInicialBRL;
   
   const hoje = new Date();
   document.getElementById('filtroMes').value = String(hoje.getMonth() + 1).padStart(2, '0');
   document.getElementById('filtroAno').value = hoje.getFullYear();
   inputHora.value = hoje.toTimeString().substring(0, 5);
 
+  atualizarPlaceholderMoeda();
   atualizarSeletor();
   bomSaldoGeral();
   filtrarPorMesEAno();
 }
 
-const displaySaldo = document.getElementById('saldoAtual');
+const displaySaldoUSD = document.getElementById('saldoAtualUSD');
+const displaySaldoBRL = document.getElementById('saldoAtualBRL');
 const selectPar = document.getElementById('par');
+const selectMercado = document.getElementById('mercado');
 const selectTipoResultado = document.getElementById('tipoResultado');
 const tabela = document.getElementById('tabelaCorpo');
 const inputValor = document.getElementById('valor');
@@ -84,28 +126,37 @@ const inputHora = document.getElementById('hora');
 const btnSalvarOperacao = document.getElementById('btnSalvarOperacao');
 const btnCancelarEdicao = document.getElementById('btnCancelarEdicao');
 const tituloFormulario = document.getElementById('tituloFormulario');
+const selectRiscoMercado = document.getElementById('riscoMercado');
+const inputRiscoPct = document.getElementById('riscoPct');
+
+function atualizarPlaceholderMoeda() {
+  if (!selectMercado || !inputValor) return;
+  if (selectMercado.value === 'FOREX') {
+    inputValor.placeholder = "Valor ($)";
+  } else {
+    inputValor.placeholder = "Valor (R$)";
+  }
+}
+if (selectMercado) {
+  selectMercado.addEventListener('change', atualizarPlaceholderMoeda);
+}
 
 const ctxLinha = document.getElementById('graficoLinha').getContext('2d');
 let graficoLinha = new Chart(ctxLinha, {
   type: 'line',
   data: {
     labels: [],
-    datasets: [{
-      label: 'Resultado Acumulado ($)',
-      data: [],
-      borderColor: '#00b4d8',
-      backgroundColor: 'rgba(0, 180, 216, 0.1)',
-      fill: true,
-      tension: 0.2,
-      borderWidth: 2,
-      pointRadius: 2,
-      pointBackgroundColor: '#00b4d8'
-    }]
+    datasets: []
   },
   options: {
     responsive: true,
     maintainAspectRatio: false,
-    plugins: { legend: { display: false } },
+    plugins: {
+      legend: {
+        display: false,
+        labels: { color: '#e1e1e6' }
+      }
+    },
     scales: {
       x: { display: false },
       y: { ticks: { color: '#8d8d99' }, grid: { color: '#29292e' } }
@@ -168,52 +219,86 @@ window.excluirAtivoSelecionado = async function() {
 
   if (confirm(`Deseja excluir o ativo "${ativoParaRemover}" da lista?`)) {
     ativos = ativos.filter(a => a !== ativoParaRemover);
-    await setDoc(doc(db, "users", userUid, "settings", "diario"), { ativos, capitalInicial }, { merge: true });
+    await setDoc(doc(db, "users", userUid, "settings", "diario"), {
+      capitalInicialUSD,
+      capitalInicialBRL,
+      capitalInicial: capitalInicialUSD,
+      ativos
+    }, { merge: true });
     atualizarSeletor();
   }
 };
 
 function bomSaldoGeral() {
-  saldoCalculadoAtual = capitalInicial;
-  operacoes.forEach(op => { saldoCalculadoAtual += op.valor; });
-  displaySaldo.textContent = `$ ${saldoCalculadoAtual.toFixed(2)}`;
+  saldoCalculadoUSD = capitalInicialUSD;
+  saldoCalculadoBRL = capitalInicialBRL;
+
+  operacoes.forEach(op => {
+    const mercado = op.mercado || 'B3';
+    if (mercado === 'FOREX') {
+      saldoCalculadoUSD += op.valor;
+    } else {
+      saldoCalculadoBRL += op.valor;
+    }
+  });
+
+  saldoCalculadoAtual = saldoCalculadoUSD;
+
+  if (displaySaldoUSD) displaySaldoUSD.textContent = formatarSaldo(saldoCalculadoUSD, 'FOREX');
+  if (displaySaldoBRL) displaySaldoBRL.textContent = formatarSaldo(saldoCalculadoBRL, 'B3');
+
+  const elSaldoLegacy = document.getElementById('saldoAtual');
+  if (elSaldoLegacy) elSaldoLegacy.textContent = formatarSaldo(saldoCalculadoUSD, 'FOREX');
+
   atualizarCalculadoraRisco();
 }
 
-const inputRiscoPct = document.getElementById('riscoPct');
 function atualizarCalculadoraRisco() {
   const pct = parseFloat(inputRiscoPct.value);
-  if (!isNaN(pct) && saldoCalculadoAtual > 0) {
-    const vRisco = (saldoCalculadoAtual * (pct / 100));
-    document.getElementById('riscoValorVal').textContent = `$ ${vRisco.toFixed(2)}`;
-    document.getElementById('riscoGainVal').textContent = `$ ${(saldoCalculadoAtual + vRisco).toFixed(2)}`;
-    document.getElementById('riscoLossVal').textContent = `$ ${(saldoCalculadoAtual - vRisco).toFixed(2)}`;
+  const mercado = selectRiscoMercado ? selectRiscoMercado.value : 'FOREX';
+  const saldoBase = mercado === 'FOREX' ? saldoCalculadoUSD : saldoCalculadoBRL;
+
+  const lblValor = document.getElementById('lblRiscoValor');
+  const lblGain = document.getElementById('lblRiscoGain');
+  const lblLoss = document.getElementById('lblRiscoLoss');
+  const simbolo = mercado === 'FOREX' ? '$' : 'R$';
+
+  if (lblValor) lblValor.textContent = `Valor em Risco (${simbolo}):`;
+  if (lblGain) lblGain.textContent = `Se der Lucro (1:1) (${simbolo}):`;
+  if (lblLoss) lblLoss.textContent = `Se der Loss (1:1) (${simbolo}):`;
+
+  if (!isNaN(pct) && saldoBase > 0) {
+    const vRisco = saldoBase * (pct / 100);
+    document.getElementById('riscoValorVal').textContent = formatarSaldo(vRisco, mercado);
+    document.getElementById('riscoGainVal').textContent = formatarSaldo(saldoBase + vRisco, mercado);
+    document.getElementById('riscoLossVal').textContent = formatarSaldo(saldoBase - vRisco, mercado);
   } else {
-    document.getElementById('riscoValorVal').textContent = '$ 0,00';
-    document.getElementById('riscoGainVal').textContent = '$ 0,00';
-    document.getElementById('riscoLossVal').textContent = '$ 0,00';
+    const zeroFmt = mercado === 'FOREX' ? '$ 0.00' : 'R$ 0,00';
+    document.getElementById('riscoValorVal').textContent = zeroFmt;
+    document.getElementById('riscoGainVal').textContent = zeroFmt;
+    document.getElementById('riscoLossVal').textContent = zeroFmt;
   }
 }
-inputRiscoPct.addEventListener('input', atualizarCalculadoraRisco);
+if (inputRiscoPct) inputRiscoPct.addEventListener('input', atualizarCalculadoraRisco);
+if (selectRiscoMercado) selectRiscoMercado.addEventListener('change', atualizarCalculadoraRisco);
 
 function renderizarDados(listaParaExibir, tituloCustom = "Resumo Mensal") {
   tabela.innerHTML = '';
-  let g = 0, p = 0, z = 0, totalMes = 0;
-  let labelsGrafico = ['Início'];
-  let dadosGrafico = [0];
-  let acumulado = 0;
+  let g = 0, p = 0, z = 0;
+  let totalUSD = 0;
+  let totalBRL = 0;
 
-  // Grafico looks better if sorted chronological
-  let listaGrafico = [...listaParaExibir].sort((a,b) => new Date(a.data) - new Date(b.data));
-  listaGrafico.forEach(op => {
-    acumulado += op.valor;
-    labelsGrafico.push(`Op (${op.data})`);
-    dadosGrafico.push(acumulado);
-  });
+  const mercadoFiltro = document.getElementById('filtroMercado') ? document.getElementById('filtroMercado').value : 'Todos';
 
   listaParaExibir.forEach((op) => {
     let indexOriginal = operacoes.indexOf(op);
-    totalMes += op.valor;
+    const opMercado = op.mercado || 'B3';
+
+    if (opMercado === 'FOREX') {
+      totalUSD += op.valor;
+    } else {
+      totalBRL += op.valor;
+    }
     
     let classeCor = 'zero';
     if (op.resultado === 'Ganho') { classeCor = 'ganho'; g++; }
@@ -225,9 +310,9 @@ function renderizarDados(listaParaExibir, tituloCustom = "Resumo Mensal") {
       <td>${op.data}</td>
       <td>${op.hora || '--:--'}</td>
       <td>${op.par}</td>
-      <td>${op.mercado || '-'}</td>
+      <td><strong>${opMercado}</strong></td>
       <td class="${classeCor}">${op.resultado}</td>
-      <td class="${classeCor}">${op.valor >= 0 ? '+' : ''}$ ${op.valor.toFixed(2)}</td>
+      <td class="${classeCor}">${formatarMoeda(op.valor, opMercado)}</td>
       <td class="col-acoes">
         <button type="button" class="btn-acao btn-editar" onclick="prepararEdicao(${indexOriginal})">Editar</button>
         <button type="button" class="btn-acao btn-excluir" onclick="excluirOperacao(${indexOriginal})">Excluir</button>
@@ -241,14 +326,140 @@ function renderizarDados(listaParaExibir, tituloCustom = "Resumo Mensal") {
   document.getElementById('qtdPerdas').textContent = p;
   document.getElementById('qtdZeros').textContent = z;
   
-  const elTotalMes = document.getElementById('resultadoMesVal');
-  elTotalMes.textContent = `${totalMes >= 0 ? '+' : ''}$ ${totalMes.toFixed(2)}`;
-  elTotalMes.className = totalMes > 0 ? 'ganho' : (totalMes < 0 ? 'perda' : 'zero');
+  const boxUSD = document.getElementById('boxResultadoUSD');
+  const boxBRL = document.getElementById('boxResultadoBRL');
+  const elUSD = document.getElementById('resultadoMesValUSD');
+  const elBRL = document.getElementById('resultadoMesValBRL');
 
-  graficoLinha.data.labels = labelsGrafico;
-  graficoLinha.data.datasets[0].data = dadosGrafico;
+  if (elUSD) {
+    elUSD.textContent = formatarMoeda(totalUSD, 'FOREX');
+    elUSD.className = totalUSD > 0 ? 'ganho' : (totalUSD < 0 ? 'perda' : 'zero');
+  }
+  if (elBRL) {
+    elBRL.textContent = formatarMoeda(totalBRL, 'B3');
+    elBRL.className = totalBRL > 0 ? 'ganho' : (totalBRL < 0 ? 'perda' : 'zero');
+  }
+
+  if (boxUSD && boxBRL) {
+    if (mercadoFiltro === 'FOREX') {
+      boxUSD.style.display = 'block';
+      boxBRL.style.display = 'none';
+    } else if (mercadoFiltro === 'B3') {
+      boxUSD.style.display = 'none';
+      boxBRL.style.display = 'block';
+    } else {
+      boxUSD.style.display = 'block';
+      boxBRL.style.display = 'block';
+    }
+  }
+
+  // Gráfico de Linha: Evolução
+  let listaGrafico = [...listaParaExibir].sort((a,b) => new Date(a.data) - new Date(b.data));
+
+  if (listaGrafico.length === 0) {
+    graficoLinha.data.labels = ['Sem dados'];
+    graficoLinha.data.datasets = [{
+      label: 'Acumulado',
+      data: [0],
+      borderColor: '#00b4d8',
+      backgroundColor: 'rgba(0, 180, 216, 0.1)',
+      fill: true
+    }];
+    graficoLinha.options.plugins.legend.display = false;
+  } else if (mercadoFiltro === 'FOREX') {
+    let labelsGrafico = ['Início'];
+    let dadosGrafico = [0];
+    let acumulado = 0;
+    listaGrafico.forEach(op => {
+      acumulado += op.valor;
+      labelsGrafico.push(`Op (${op.data})`);
+      dadosGrafico.push(acumulado);
+    });
+    graficoLinha.data.labels = labelsGrafico;
+    graficoLinha.data.datasets = [{
+      label: 'FOREX Acumulado ($)',
+      data: dadosGrafico,
+      borderColor: '#00b4d8',
+      backgroundColor: 'rgba(0, 180, 216, 0.1)',
+      fill: true,
+      tension: 0.2,
+      borderWidth: 2,
+      pointRadius: 2,
+      pointBackgroundColor: '#00b4d8'
+    }];
+    graficoLinha.options.plugins.legend.display = false;
+  } else if (mercadoFiltro === 'B3') {
+    let labelsGrafico = ['Início'];
+    let dadosGrafico = [0];
+    let acumulado = 0;
+    listaGrafico.forEach(op => {
+      acumulado += op.valor;
+      labelsGrafico.push(`Op (${op.data})`);
+      dadosGrafico.push(acumulado);
+    });
+    graficoLinha.data.labels = labelsGrafico;
+    graficoLinha.data.datasets = [{
+      label: 'B3 Acumulado (R$)',
+      data: dadosGrafico,
+      borderColor: '#04d361',
+      backgroundColor: 'rgba(4, 211, 97, 0.1)',
+      fill: true,
+      tension: 0.2,
+      borderWidth: 2,
+      pointRadius: 2,
+      pointBackgroundColor: '#04d361'
+    }];
+    graficoLinha.options.plugins.legend.display = false;
+  } else {
+    // Todos os mercados: traçar curvas independentes para FOREX e B3
+    let labelsGrafico = ['Início'];
+    let dadosUSD = [0];
+    let dadosBRL = [0];
+    let accUSD = 0;
+    let accBRL = 0;
+
+    listaGrafico.forEach(op => {
+      const opMercado = op.mercado || 'B3';
+      if (opMercado === 'FOREX') {
+        accUSD += op.valor;
+      } else {
+        accBRL += op.valor;
+      }
+      labelsGrafico.push(`${op.data} (${opMercado})`);
+      dadosUSD.push(accUSD);
+      dadosBRL.push(accBRL);
+    });
+
+    graficoLinha.data.labels = labelsGrafico;
+    graficoLinha.data.datasets = [
+      {
+        label: 'FOREX ($)',
+        data: dadosUSD,
+        borderColor: '#00b4d8',
+        backgroundColor: 'transparent',
+        fill: false,
+        tension: 0.2,
+        borderWidth: 2,
+        pointRadius: 2,
+        pointBackgroundColor: '#00b4d8'
+      },
+      {
+        label: 'B3 (R$)',
+        data: dadosBRL,
+        borderColor: '#04d361',
+        backgroundColor: 'transparent',
+        fill: false,
+        tension: 0.2,
+        borderWidth: 2,
+        pointRadius: 2,
+        pointBackgroundColor: '#04d361'
+      }
+    ];
+    graficoLinha.options.plugins.legend.display = true;
+  }
   graficoLinha.update();
 
+  // Gráfico e Tabela de Horários
   let estatisticasHorarios = {};
   listaParaExibir.forEach(op => {
     let horaFormatada = op.hora ? op.hora.split(':')[0] + ':00h' : 'Sem Hora';
@@ -288,7 +499,8 @@ function filtrarPorMesEAno() {
   const chaveBusca = `${ano}-${mes}`;
   const filtradas = operacoes.filter(op => {
     const dataMatch = op.data.startsWith(chaveBusca);
-    const mercadoMatch = (mercado === 'Todos') || (op.mercado === mercado) || (!op.mercado && mercado === 'B3');
+    const opMercado = op.mercado || 'B3';
+    const mercadoMatch = (mercado === 'Todos') || (opMercado === mercado);
     return dataMatch && mercadoMatch;
   });
   const nomeMes = document.getElementById('filtroMes').options[document.getElementById('filtroMes').selectedIndex].text;
@@ -314,7 +526,6 @@ window.exportarHistoricoPDF = function() {
     return;
   }
 
-  // Solução para o bug do html2canvas gerando PDF em branco quando a tela está rolada
   const originalScrollY = window.scrollY;
   window.scrollTo(0, 0);
 
@@ -371,7 +582,12 @@ window.desfazerExclusaoDiario = async function() {
   if (!ultimaExclusaoDiario) return;
   const op = ultimaExclusaoDiario.operacao;
   await setDoc(doc(db, "users", userUid, "operacoes", op.id), {
-    data: op.data, hora: op.hora, par: op.par, mercado: op.mercado || 'B3', resultado: op.resultado, valor: op.valor
+    data: op.data,
+    hora: op.hora,
+    par: op.par,
+    mercado: op.mercado || 'B3',
+    resultado: op.resultado,
+    valor: op.valor
   });
   
   ultimaExclusaoDiario = null;
@@ -385,6 +601,7 @@ window.prepararEdicao = function(index) {
   inputHora.value = op.hora || '';
   selectPar.value = op.par;
   document.getElementById('mercado').value = op.mercado || 'B3';
+  atualizarPlaceholderMoeda();
   selectTipoResultado.value = op.resultado;
   inputValor.value = Math.abs(op.valor);
   tituloFormulario.textContent = "Editar Operação";
@@ -397,6 +614,7 @@ window.cancelarEdicao = function() {
   indiceEdicao = null;
   document.getElementById('tradeForm').reset();
   inputHora.value = new Date().toTimeString().substring(0, 5);
+  atualizarPlaceholderMoeda();
   tituloFormulario.textContent = "Registrador Nova Operação";
   btnSalvarOperacao.textContent = "Salvar Operação";
   btnCancelarEdicao.style.display = "none";
@@ -404,15 +622,33 @@ window.cancelarEdicao = function() {
 btnCancelarEdicao.addEventListener('click', window.cancelarEdicao);
 
 document.getElementById('btnSalvarCapital').addEventListener('click', async function() {
-  capitalInicial = parseFloat(document.getElementById('capitalInicial').value) || 0;
-  await setDoc(doc(db, "users", userUid, "settings", "diario"), { capitalInicial, ativos }, { merge: true });
+  const inputCapUSD = document.getElementById('capitalInicialUSD');
+  const inputCapBRL = document.getElementById('capitalInicialBRL');
+  
+  capitalInicialUSD = parseFloat(inputCapUSD ? inputCapUSD.value : 0) || 0;
+  capitalInicialBRL = parseFloat(inputCapBRL ? inputCapBRL.value : 0) || 0;
+  capitalInicial = capitalInicialUSD;
+
+  await setDoc(doc(db, "users", userUid, "settings", "diario"), {
+    capitalInicialUSD,
+    capitalInicialBRL,
+    capitalInicial: capitalInicialUSD,
+    ativos
+  }, { merge: true });
+
+  bomSaldoGeral();
 });
 
 document.getElementById('btnSalvarAtivo').addEventListener('click', async function() {
   let txt = document.getElementById('novoAtivo').value.trim().toUpperCase();
   if (txt !== '' && !ativos.includes(txt)) {
     ativos.push(txt);
-    await setDoc(doc(db, "users", userUid, "settings", "diario"), { capitalInicial, ativos }, { merge: true });
+    await setDoc(doc(db, "users", userUid, "settings", "diario"), {
+      capitalInicialUSD,
+      capitalInicialBRL,
+      capitalInicial: capitalInicialUSD,
+      ativos
+    }, { merge: true });
     atualizarSeletor();
     selectPar.value = txt;
     document.getElementById('novoAtivo').value = '';
