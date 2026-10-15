@@ -203,15 +203,16 @@
       flex-wrap: wrap;
       align-items: center;
     }
-    input, select, button {
+    input, select, textarea, button {
       padding: 10px;
       border: 1px solid #323238;
       background-color: #121214;
       color: #fff;
       border-radius: 4px;
       font-size: 14px;
+      font-family: inherit;
     }
-    input:focus, select:focus { outline: 1px solid #00b4d8; }
+    input:focus, select:focus, textarea:focus { outline: 1px solid #00b4d8; }
     button {
       background-color: #00875f;
       color: white;
@@ -304,6 +305,70 @@
     }
     .info-mesa { margin-bottom: 6px; font-size: 14px; }
     .info-mesa strong { color: #e1e1e6; }
+
+    /* DESTAQUE DO VALOR DO TESTE */
+    .destaque-valor-teste {
+      background: linear-gradient(135deg, rgba(0, 180, 216, 0.16) 0%, rgba(4, 211, 97, 0.08) 100%);
+      border: 1px solid rgba(0, 180, 216, 0.4);
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+      border-radius: 8px;
+      padding: 12px 14px;
+      margin: 12px 0 14px 0;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .destaque-valor-teste .label-valor-teste {
+      font-size: 11px;
+      font-weight: 700;
+      color: #00b4d8;
+      letter-spacing: 0.8px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      text-transform: uppercase;
+    }
+    .destaque-valor-teste .numero-valor-teste {
+      font-size: 26px;
+      font-weight: 800;
+      color: #ffffff;
+      letter-spacing: 0.5px;
+      line-height: 1.2;
+    }
+
+    /* CAIXINHA DE OBSERVAÇÕES DA MESA */
+    .box-observacoes-mesa {
+      background: #18181b;
+      border: 1px solid #29292e;
+      border-radius: 6px;
+      padding: 10px;
+      margin-top: 12px;
+    }
+    .textarea-obs-mesa {
+      width: 100%;
+      box-sizing: border-box;
+      resize: vertical;
+      min-height: 52px;
+      font-size: 12px;
+      background: #121214;
+      border: 1px solid #323238;
+      border-radius: 4px;
+      color: #e1e1e6;
+      padding: 8px;
+      font-family: inherit;
+      line-height: 1.4;
+      transition: border-color 0.2s;
+    }
+    .textarea-obs-mesa:focus {
+      border-color: #00b4d8;
+      outline: none;
+    }
+    .status-salvo-obs {
+      font-size: 11px;
+      color: #04d361;
+      font-weight: bold;
+      display: none;
+    }
     
     /* BARRA DE PROGRESSO DE METAS */
     .progresso-container {
@@ -749,7 +814,7 @@
           <button type="button" class="btn-secundario" style="border-color:#f75a68; color: #f75a68;" onclick="excluirMesaCatalogoSelecionada()">✕ Excluir selecionada</button>
         </div>
         <form id="formMesa">
-          <input type="number" id="capitalMesa" placeholder="Capital Total ($)" step="0.01" required>
+          <input type="number" id="capitalMesa" placeholder="Valor do Teste / Capital ($)" step="0.01" required>
           <select id="faseMesa" onchange="verificarOpcaoMetaForm()" required>
             <option value="Fase 1 (Avaliação)">Fase 1 (Avaliação)</option>
             <option value="Fase 2 (Verificação)">Fase 2 (Verificação)</option>
@@ -764,6 +829,7 @@
 
           <input type="number" id="metaFaseMesa" placeholder="Meta da Fase Inicial ($)" step="0.01" required>
           <input type="number" id="stopFaseMesa" placeholder="Stop da Fase ($)" step="0.01" required>
+          <textarea id="observacoesMesa" placeholder="Observações (opcional: regras de drawdown, consistência, dados de login...)" rows="2" style="flex: 1 1 100%; min-height: 48px;"></textarea>
           <button type="submit">Cadastrar Mesa</button>
         </form>
       </div>
@@ -1863,6 +1929,49 @@
     // ==========================================
     // 5. MESAS PROPRIETÁRIAS
     // ==========================================
+    function escapeHtml(text) {
+      if (!text) return '';
+      return String(text)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    window.salvarObservacoesMesa = async function(index) {
+      const textarea = document.getElementById(`obsMesa_${index}`);
+      const statusSpan = document.getElementById(`statusSalvoObs_${index}`);
+      if (!textarea) return;
+
+      const novaObs = textarea.value;
+      const m = mesas[index];
+      if (!m) return;
+
+      m.observacoes = novaObs;
+
+      try {
+        await updateDoc(doc(db, "users", userUid, "mesas", m.id), {
+          observacoes: novaObs
+        });
+
+        if (statusSpan) {
+          statusSpan.style.display = 'inline-block';
+          statusSpan.style.opacity = '1';
+          setTimeout(() => {
+            statusSpan.style.transition = 'opacity 0.4s ease';
+            statusSpan.style.opacity = '0';
+            setTimeout(() => {
+              statusSpan.style.display = 'none';
+              statusSpan.style.transition = '';
+            }, 400);
+          }, 1500);
+        }
+      } catch (err) {
+        console.error("Erro ao salvar observação da mesa:", err);
+        alert("Erro ao salvar observação.");
+      }
+    };
     const catalogoMesasPadrao = ['Hantec Trader', 'FTMO', 'MyForexFunds', 'FundedNext'];
     let catalogoMesas = [...catalogoMesasPadrao];
     let mesas = [];
@@ -2079,7 +2188,15 @@
           <h4>${m.nome}</h4>
           <span class="badge-fase">${m.fase}</span>
 
-          <div class="info-mesa"><strong>Capital da Conta:</strong> $${parseFloat(m.capital).toFixed(2)}</div>
+          <!-- DESTAQUE DO VALOR DO TESTE -->
+          <div class="destaque-valor-teste">
+            <div class="label-valor-teste">
+              <span>💎 Valor do Teste</span>
+              <span style="font-size: 10px; color: #8d8d99; font-weight: normal; text-transform: none;">Capital da Conta</span>
+            </div>
+            <div class="numero-valor-teste">$ ${parseFloat(m.capital || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+          </div>
+
           <div class="info-mesa"><strong>Lucro/Resultado na Fase:</strong> <span class="${classeLucro}">${lucroFaseAtual >= 0 ? '+' : ''}$ ${lucroFaseAtual.toFixed(2)}</span></div>
           
           ${temMeta ? `
@@ -2131,6 +2248,23 @@
             </button>
           ` : ''}
 
+          <!-- CAIXINHA DE OBSERVAÇÕES -->
+          <div class="box-observacoes-mesa">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+              <span style="font-size: 12px; font-weight: 600; color: #00b4d8;">📝 Observações:</span>
+              <span id="statusSalvoObs_${index}" class="status-salvo-obs">Salvo! ✓</span>
+            </div>
+            <textarea id="obsMesa_${index}" 
+                      class="textarea-obs-mesa"
+                      placeholder="Escreva aqui observações desta mesa (regras, login, lembretes...)" 
+                      rows="2"
+                      onchange="salvarObservacoesMesa(${index})"
+                      onblur="salvarObservacoesMesa(${index})">${m.observacoes ? escapeHtml(m.observacoes) : ''}</textarea>
+            <div style="display: flex; justify-content: flex-end; margin-top: 5px;">
+              <button type="button" class="btn-secundario" style="font-size: 11px; padding: 4px 10px;" onclick="salvarObservacoesMesa(${index})">💾 Salvar Nota</button>
+            </div>
+          </div>
+
           <div style="margin-top: 15px; text-align: right;">
             <button type="button" class="btn-acao btn-excluir" onclick="excluirMesa(${index})">Remover Mesa</button>
           </div>
@@ -2157,6 +2291,7 @@
       }
 
       const stopFaseVal = parseFloat(document.getElementById('stopFaseMesa')?.value) || 0;
+      const observacoesVal = document.getElementById('observacoesMesa')?.value?.trim() || '';
 
       const novaMesa = {
         nome: nomeMesaFinal,
@@ -2164,6 +2299,7 @@
         fase: faseSelecionada,
         metaFase: valorMeta,
         stopFase: stopFaseVal,
+        observacoes: observacoesVal,
         saldoAtualFase: 0,
         historicoFaseAtual: [],
         historicoPassado: []
@@ -2306,6 +2442,7 @@
         const m = ultimaExclusaoMesas.mesa;
         await setDoc(doc(db, "users", userUid, "mesas", m.id), {
           nome: m.nome, capital: m.capital, fase: m.fase, metaFase: m.metaFase, stopFase: m.stopFase || 0,
+          observacoes: m.observacoes || '',
           saldoAtualFase: m.saldoAtualFase, historicoFaseAtual: m.historicoFaseAtual, historicoPassado: m.historicoPassado
         });
       } else if (ultimaExclusaoMesas.tipo === 'trade') {
