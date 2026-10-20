@@ -408,6 +408,85 @@
       padding: 3px 0;
       border-bottom: 1px dashed #202024;
     }
+
+    /* ESTILOS DA SEÇÃO ARQUIVOS E PASTAS */
+    .grid-pastas {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 15px;
+      margin-top: 15px;
+      margin-bottom: 25px;
+    }
+    .card-pasta {
+      background: #121214;
+      border: 1px solid #323238;
+      border-radius: 8px;
+      padding: 15px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      cursor: pointer;
+      transition: border-color 0.2s, background-color 0.2s;
+    }
+    .card-pasta:hover {
+      border-color: #00b4d8;
+      background-color: #18181b;
+    }
+    .card-pasta.ativa {
+      border-color: #00b4d8;
+      background-color: #1a2634;
+    }
+    .grid-arquivos {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 20px;
+      margin-top: 15px;
+    }
+    .card-arquivo {
+      background: #121214;
+      border: 1px solid #323238;
+      border-radius: 8px;
+      padding: 15px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .card-arquivo h4 {
+      font-size: 15px;
+      color: #e1e1e6;
+      word-break: break-all;
+    }
+    .badge-tipo-arquivo {
+      display: inline-block;
+      padding: 2px 6px;
+      font-size: 11px;
+      border-radius: 4px;
+      background: #29292e;
+      color: #00b4d8;
+      font-weight: bold;
+      width: fit-content;
+    }
+    .preview-arquivo-container {
+      width: 100%;
+      height: 160px;
+      background: #202024;
+      border-radius: 6px;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid #323238;
+    }
+    .preview-arquivo-container img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .preview-arquivo-container iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+    }
     
     /* MODAL DE TRANSIÇÃO E HISTÓRICO */
     .modal-overlay {
@@ -518,6 +597,12 @@
         <a href="#" onclick="navegarPara('mesas', this)">
           <span class="icon">🏢</span>
           <span>Mesas Proprietárias</span>
+        </a>
+      </li>
+      <li>
+        <a href="#" onclick="navegarPara('arquivos', this)">
+          <span class="icon">📁</span>
+          <span>Arquivos</span>
         </a>
       </li>
       <li style="margin-top: auto; border-top: 1px solid #323238;">
@@ -728,6 +813,8 @@
             <option value="Compra">Compra</option>
             <option value="Venda">Venda</option>
           </select>
+
+          <input type="number" id="swingValorAlocado" placeholder="Valor Alocado ($)" step="0.01" style="width: 140px;" required>
           
           <!-- Seleção Dinâmica do Resultado -->
           <select id="swingResultadoTipo" required>
@@ -786,6 +873,7 @@
                 <th>Ativo</th>
                 <th>Mercado</th>
                 <th>Operação</th>
+                <th>Valor Alocado</th>
                 <th>Estado</th>
                 <th>Resultado ($)</th>
                 <th class="col-acoes">Ações</th>
@@ -840,6 +928,68 @@
       </div>
     </div>
 
+    <!-- SEÇÃO ARQUIVOS -->
+    <div id="secao-arquivos" class="pagina-secao">
+      <div class="header-secao">
+        <h1>Gerenciador de Arquivos & Bloco de Notas</h1>
+      </div>
+
+      <!-- PAINEL DE ARQUIVOS -->
+      <div class="card">
+        <h3>Adicionar Novo Arquivo / Comprovante / Print</h3>
+        <form id="formArquivo" style="display: flex; flex-direction: column; align-items: flex-start; gap: 15px;">
+          <div style="display: flex; gap: 10px; flex-wrap: wrap; width: 100%;">
+            <select id="categoriaArquivo" required style="flex: 1; min-width: 180px;">
+              <option value="Nota de Corretagem">Nota de Corretagem</option>
+              <option value="PDF">PDF</option>
+              <option value="Excel">Arquivo Excel (.xlsx, .xls, .csv)</option>
+              <option value="Word">Arquivo Word (.doc, .docx)</option>
+              <option value="Print">Print / Imagem (.png, .jpg, .jpeg)</option>
+            </select>
+            <input type="text" id="nomeArquivo" placeholder="Nome / Descrição do arquivo" required style="flex: 2; min-width: 200px;">
+          </div>
+          <div style="width: 100%;">
+            <label style="display: block; font-size: 13px; color: #a8a8b3; margin-bottom: 5px;">Selecione o arquivo do computador:</label>
+            <input type="file" id="inputArquivoUpload" accept=".pdf,.png,.jpg,.jpeg,.doc,.docx,.xls,.xlsx,.csv,.txt" required style="width: 100%;">
+          </div>
+          <button type="submit">Upload do Arquivo</button>
+        </form>
+      </div>
+
+      <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
+          <h3 style="margin: 0;">Pastas & Organização de Arquivos</h3>
+          <button type="button" class="btn-secundario" onclick="criarNovaPasta()">📁 + Criar Nova Pasta</button>
+        </div>
+
+        <!-- LISTA DE PASTAS (ORGANIZAÇÃO) -->
+        <div id="gridPastas" class="grid-pastas"></div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #323238; padding-top: 15px; margin-top: 15px; flex-wrap: wrap; gap: 10px;">
+          <h4 id="tituloPastaAtual" style="color: #00b4d8; margin: 0;">Conteúdo da Pasta: Geral (Todos)</h4>
+          <button type="button" class="btn-secundario" style="font-size: 12px; padding: 6px 10px;" onclick="mostrarTodosArquivos()">Ver Todos os Arquivos</button>
+        </div>
+
+        <div id="gridArquivos" class="grid-arquivos"></div>
+      </div>
+
+      <!-- PAINEL DE BLOCO DE NOTAS -->
+      <div class="card" style="margin-top: 30px;">
+        <h3>Bloco de Notas</h3>
+        <form id="formBlocoNotas" style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px;">
+          <input type="hidden" id="notaIdEdicao">
+          <input type="text" id="tituloNota" placeholder="Título da Nota" required style="width: 100%;">
+          <textarea id="conteudoNota" placeholder="Escreva suas anotações aqui..." rows="4" required style="width: 100%; resize: vertical;"></textarea>
+          <div style="display: flex; gap: 10px;">
+            <button type="submit" id="btnSalvarNota">Salvar Nota</button>
+            <button type="button" id="btnCancelarNota" class="btn-secundario" style="display: none;" onclick="cancelarEdicaoNota()">Cancelar</button>
+          </div>
+        </form>
+
+        <div id="gridNotas" class="grid-arquivos"></div>
+      </div>
+    </div>
+
   </main>
 
   <div id="modalFase" class="modal-overlay" style="display: none;">
@@ -885,6 +1035,17 @@
       <div style="text-align: right;">
         <button type="button" class="btn-secundario" onclick="fecharModalHistorico()">Fechar</button>
       </div>
+    </div>
+  </div>
+
+  <!-- MODAL DE VISUALIZAÇÃO INTEGRADA DE ARQUIVO -->
+  <div id="modalVisualizador" class="modal-overlay" style="display: none;">
+    <div class="modal-content" style="max-width: 800px; width: 90%; height: 85vh; display: flex; flex-direction: column;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+        <h3 id="modalVisualizadorTitulo" style="margin: 0;">Visualizar Arquivo</h3>
+        <button type="button" class="btn-secundario" onclick="fecharVisualizador()">✕ Fechar</button>
+      </div>
+      <div id="modalVisualizadorCorpo" style="flex: 1; background: #121214; border-radius: 6px; overflow: hidden; display: flex; align-items: center; justify-content: center; border: 1px solid #323238;"></div>
     </div>
   </div>
 
@@ -1336,7 +1497,6 @@
         }
       }
 
-      // Gráficos Separados de Capital: Dólar (FOREX) e B3 (R$)
       if (graficoCapitalUSD) {
         const listaUSD = listaParaExibir.filter(op => op.mercado === 'FOREX').sort((a, b) => new Date(a.data) - new Date(b.data));
         if (listaUSD.length === 0) {
@@ -1424,7 +1584,6 @@
       renderizarDados(operacoes, "Resumo Geral");
     });
 
-    // Atualização em Tempo Real ao Digitar ou Alterar os Capitais
     function atualizarCapitaisEmTempoReal() {
       const inputCapUSD = document.getElementById('capitalInicialUSD');
       const inputCapBRL = document.getElementById('capitalInicialBRL');
@@ -1746,6 +1905,7 @@
 
       const resultadoTipoVal = document.getElementById('swingResultadoTipo').value;
       const valorResultadoBruto = Math.abs(parseFloat(document.getElementById('swingValorResultado').value) || 0);
+      const valorAlocado = parseFloat(document.getElementById('swingValorAlocado').value) || 0;
 
       let estadoVal = 'Em Aberto';
       let resultadoFinal = 0;
@@ -1760,6 +1920,7 @@
         ativo: document.getElementById('swingAtivo').value,
         mercado: document.getElementById('swingMercado').value,
         tipo: document.getElementById('swingTipo').value,
+        valorAlocado: valorAlocado,
         estado: estadoVal,
         resultadoTipo: resultadoTipoVal,
         resultado: resultadoFinal
@@ -1777,7 +1938,7 @@
       tbody.innerHTML = '';
 
       if (lista.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:#8d8d99;">Nenhuma operação encontrada no histórico.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; color:#8d8d99;">Nenhuma operação encontrada no histórico.</td></tr>';
         if (graficoSwingLinha) {
           graficoSwingLinha.data.labels = ['Início'];
           graficoSwingLinha.data.datasets[0].data = [0];
@@ -1824,6 +1985,7 @@
           <td><strong>${st.ativo}</strong></td>
           <td>${st.mercado || '-'}</td>
           <td>${st.tipo}</td>
+          <td>$ ${(st.valorAlocado || 0).toFixed(2)}</td>
           <td>${estadoBadge}</td>
           <td>${textoResultado}</td>
           <td class="col-acoes">
@@ -1878,7 +2040,7 @@
       const t = ultimaExclusaoSwing.trade;
       
       await setDoc(doc(db, "users", userUid, "swingTrades", t.id), {
-        data: t.data, ativo: t.ativo, mercado: t.mercado || 'B3', tipo: t.tipo, estado: t.estado, resultadoTipo: t.resultadoTipo, resultado: t.resultado
+        data: t.data, ativo: t.ativo, mercado: t.mercado || 'B3', tipo: t.tipo, valorAlocado: t.valorAlocado || 0, estado: t.estado, resultadoTipo: t.resultadoTipo, resultado: t.resultado
       });
       
       ultimaExclusaoSwing = null;
@@ -2462,7 +2624,409 @@
     };
 
     // ==========================================
-    // 6. INICIALIZAÇÃO E AUTENTICAÇÃO
+    // 6. GERENCIADOR DE ARQUIVOS, PASTAS E BLOCO DE NOTAS
+    // ==========================================
+    let arquivos = [];
+    let notas = [];
+    let pastasCustom = ['Geral', 'Comprovantes', 'Relatórios', 'Prints de Operações'];
+    let pastaSelecionadaFiltro = 'Todos';
+
+    function carregarDadosArquivos(uid) {
+      return new Promise((resolve) => {
+        onSnapshot(doc(db, "users", uid, "settings", "pastasArquivos"), (docSnap) => {
+          if (docSnap.exists() && docSnap.data().pastas) {
+            pastasCustom = docSnap.data().pastas;
+          }
+          renderizarPastas();
+        });
+
+        onSnapshot(collection(db, "users", uid, "arquivos"), (querySnapshot) => {
+          arquivos = [];
+          querySnapshot.forEach((doc) => {
+            arquivos.push({ id: doc.id, ...doc.data() });
+          });
+          arquivos.sort((a, b) => new Date(b.dataCriacao || 0) - new Date(a.dataCriacao || 0));
+          window.renderizarArquivos();
+          resolve();
+        });
+      });
+    }
+
+    function carregarDadosNotas(uid) {
+      return new Promise((resolve) => {
+        onSnapshot(collection(db, "users", uid, "blocoNotas"), (querySnapshot) => {
+          notas = [];
+          querySnapshot.forEach((doc) => {
+            notas.push({ id: doc.id, ...doc.data() });
+          });
+          notas.sort((a, b) => new Date(b.dataCriacao || 0) - new Date(a.dataCriacao || 0));
+          window.renderizarNotas();
+          resolve();
+        });
+      });
+    }
+
+    window.criarNovaPasta = async function() {
+      const nomeNova = prompt("Digite o nome da nova pasta para organizar os arquivos:");
+      if (nomeNova && nomeNova.trim() !== '') {
+        const pastaLimpa = nomeNova.trim();
+        if (!pastasCustom.includes(pastaLimpa)) {
+          pastasCustom.push(pastaLimpa);
+          await setDoc(doc(db, "users", userUid, "settings", "pastasArquivos"), { pastas: pastasCustom }, { merge: true });
+          renderizarPastas();
+        } else {
+          alert("Esta pasta já existe.");
+        }
+      }
+    };
+
+    window.excluirPastaCustom = async function(pastaNome, event) {
+      event.stopPropagation();
+      if (pastaNome === 'Geral') {
+        alert("A pasta 'Geral' não pode ser excluída.");
+        return;
+      }
+      if (confirm(`Deseja excluir a pasta "${pastaNome}"? Os arquivos dela serão movidos para 'Geral'.`)) {
+        pastasCustom = pastasCustom.filter(p => p !== pastaNome);
+        
+        // Atualizar arquivos que estavam nessa pasta para 'Geral'
+        for (let arq of arquivos) {
+          if (arq.pasta === pastaNome) {
+            await updateDoc(doc(db, "users", userUid, "arquivos", arq.id), { pasta: 'Geral' });
+          }
+        }
+
+        await setDoc(doc(db, "users", userUid, "settings", "pastasArquivos"), { pastas: pastasCustom }, { merge: true });
+        if (pastaSelecionadaFiltro === pastaNome) pastaSelecionadaFiltro = 'Todos';
+        renderizarPastas();
+        window.renderizarArquivos();
+      }
+    };
+
+    function renderizarPastas() {
+      const containerPastas = document.getElementById('gridPastas');
+      const selectForm = document.getElementById('categoriaArquivo');
+      if (!containerPastas) return;
+
+      containerPastas.innerHTML = '';
+
+      // Atualizar o select de categoria/pasta no formulário de upload
+      if (selectForm) {
+        const valAtual = selectForm.value;
+        selectForm.innerHTML = '';
+        pastasCustom.forEach(p => {
+          const opt = document.createElement('option');
+          opt.value = p;
+          opt.textContent = `📁 ${p}`;
+          selectForm.appendChild(opt);
+        });
+        if (pastasCustom.includes(valAtual)) selectForm.value = valAtual;
+      }
+
+      // Renderizar cards de pastas para filtragem rápida
+      pastasCustom.forEach(pasta => {
+        const qtdArquivos = arquivos.filter(a => (a.pasta || 'Geral') === pasta).length;
+        const cardPasta = document.createElement('div');
+        cardPasta.className = `card-pasta ${pastaSelecionadaFiltro === pasta ? 'ativa' : ''}`;
+        cardPasta.onclick = () => filtrarPorPasta(pasta);
+
+        cardPasta.innerHTML = `
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-size: 20px;">📂</span>
+            ${pasta !== 'Geral' ? `<button type="button" class="btn-excluir" style="padding: 2px 6px; font-size: 10px;" onclick="excluirPastaCustom('${pasta}', event)">✕</button>` : ''}
+          </div>
+          <strong style="color: #e1e1e6; font-size: 14px; word-break: break-all;">${pasta}</strong>
+          <span style="font-size: 11px; color: #8d8d99;">${qtdArquivos} arquivo(s)</span>
+        `;
+        containerPastas.appendChild(cardPasta);
+      });
+    }
+
+    window.filtrarPorPasta = function(pasta) {
+      pastaSelecionadaFiltro = pasta;
+      document.getElementById('tituloPastaAtual').textContent = `Conteúdo da Pasta: ${pasta}`;
+      renderizarPastas();
+      window.renderizarArquivos();
+    };
+
+    window.mostrarTodosArquivos = function() {
+      pastaSelecionadaFiltro = 'Todos';
+      document.getElementById('tituloPastaAtual').textContent = `Conteúdo da Pasta: Todos os Arquivos`;
+      renderizarPastas();
+      window.renderizarArquivos();
+    };
+
+    window.renderizarArquivos = function() {
+      const container = document.getElementById('gridArquivos');
+      if (!container) return;
+
+      container.innerHTML = '';
+
+      const listaFiltrada = arquivos.filter(arq => {
+        if (pastaSelecionadaFiltro === 'Todos') return true;
+        const pArq = arq.pasta || 'Geral';
+        return pArq === pastaSelecionadaFiltro;
+      });
+
+      if (listaFiltrada.length === 0) {
+        container.innerHTML = '<p style="color: #8d8d99;">Nenhum arquivo nesta pasta.</p>';
+        return;
+      }
+
+      listaFiltrada.forEach(arq => {
+        const card = document.createElement('div');
+        card.className = 'card-arquivo';
+
+        let previewHTML = '';
+        if (arq.mimeType && arq.mimeType.startsWith('image/')) {
+          previewHTML = `<div class="preview-arquivo-container"><img src="${arq.conteudoBase64}" alt="${escapeHtml(arq.nome)}"></div>`;
+        } else if (arq.mimeType === 'application/pdf') {
+          previewHTML = `<div class="preview-arquivo-container"><iframe src="${arq.conteudoBase64}"></iframe></div>`;
+        } else {
+          previewHTML = `
+            <div class="preview-arquivo-container" style="flex-direction: column; gap: 8px;">
+              <span style="font-size: 32px;">📄</span>
+              <span style="font-size: 11px; color: #8d8d99; text-align: center; padding: 0 5px;">Visualização padrão</span>
+            </div>`;
+        }
+
+        card.innerHTML = `
+          <div>
+            <span class="badge-tipo-arquivo">📁 ${arq.pasta || 'Geral'}</span>
+            <h4 style="margin-top: 6px;">${escapeHtml(arq.nome)}</h4>
+            <span style="font-size: 11px; color: #8d8d99;">Enviado em: ${arq.dataFormatada || '-'}</span>
+          </div>
+          ${previewHTML}
+          <div style="display: flex; gap: 8px; margin-top: auto; flex-wrap: wrap;">
+            <button type="button" class="btn-secundario" style="padding: 6px 10px; font-size: 12px;" onclick='abrirVisualizador("${arq.id}")'>👁 Visualizar</button>
+            <a href="${arq.conteudoBase64}" download="${escapeHtml(arq.nomeOriginal || arq.nome)}" style="padding: 6px 10px; font-size: 12px; text-decoration: none; display: inline-block; background-color: #00875f; color: #fff; border-radius: 4px; font-weight: bold; text-align: center;">⬇ Baixar</a>
+            <button type="button" class="btn-excluir" style="padding: 6px 10px; font-size: 12px;" onclick="excluirArquivo('${arq.id}')">Excluir</button>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+    };
+
+    window.abrirVisualizador = function(id) {
+      const arq = arquivos.find(a => a.id === id);
+      if (!arq) return;
+
+      document.getElementById('modalVisualizadorTitulo').textContent = arq.nome;
+      const corpo = document.getElementById('modalVisualizadorCorpo');
+      corpo.innerHTML = '';
+
+      if (arq.mimeType && arq.mimeType.startsWith('image/')) {
+        corpo.innerHTML = `<img src="${arq.conteudoBase64}" style="max-width: 100%; max-height: 100%; object-fit: contain;">`;
+      } else if (arq.mimeType === 'application/pdf') {
+        corpo.innerHTML = `<iframe src="${arq.conteudoBase64}" style="width: 100%; height: 100%; border: none;"></iframe>`;
+      } else {
+        corpo.innerHTML = `<div style="padding: 20px; text-align: center;"><p style="margin-bottom: 15px; color: #e1e1e6;">Este arquivo não pode ser pré-visualizado diretamente.</p><a href="${arq.conteudoBase64}" download="${escapeHtml(arq.nomeOriginal || arq.nome)}" style="padding: 10px 20px; background: #00875f; color: #fff; text-decoration: none; border-radius: 4px; font-weight: bold;">Baixar Arquivo</a></div>`;
+      }
+
+      document.getElementById('modalVisualizador').style.display = 'flex';
+    };
+
+    window.fecharVisualizador = function() {
+      document.getElementById('modalVisualizador').style.display = 'none';
+      document.getElementById('modalVisualizadorCorpo').innerHTML = '';
+    };
+
+    function comprimirImagem(file, maxWidth = 1200, quality = 0.7) {
+      return new Promise((resolve) => {
+        if (!file.type.startsWith('image/')) {
+          const reader = new FileReader();
+          reader.onload = (e) => resolve(e.target.result);
+          reader.readAsDataURL(file);
+          return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          const img = new Image();
+          img.onload = () => {
+            let width = img.width;
+            let height = img.height;
+
+            if (width > maxWidth) {
+              height = Math.round((height * maxWidth) / width);
+              width = maxWidth;
+            }
+
+            const canvas = document.createElement('canvas');
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, width, height);
+
+            resolve(canvas.toDataURL('image/jpeg', quality));
+          };
+          img.src = event.target.result;
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+
+    document.getElementById('formArquivo')?.addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const pastaSelecionada = document.getElementById('categoriaArquivo').value;
+      const nome = document.getElementById('nomeArquivo').value.trim();
+      const fileInput = document.getElementById('inputArquivoUpload');
+
+      if (!fileInput.files || fileInput.files.length === 0) {
+        alert("Por favor, selecione um arquivo.");
+        return;
+      }
+
+      const file = fileInput.files[0];
+
+      if (file.size > 800 * 1024 && !file.type.startsWith('image/')) {
+        alert("O arquivo selecionado é muito grande. Por favor, escolha um arquivo menor que 800KB para garantir compatibilidade.");
+        return;
+      }
+
+      try {
+        const conteudoBase64 = await comprimirImagem(file);
+        const hoje = new Date();
+        const dataFormatada = hoje.toLocaleDateString('pt-BR') + ' ' + hoje.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+
+        const novoArquivo = {
+          pasta: pastaSelecionada,
+          nome,
+          nomeOriginal: file.name,
+          mimeType: file.type.startsWith('image/') ? 'image/jpeg' : file.type,
+          conteudoBase64,
+          dataCriacao: hoje.toISOString(),
+          dataFormatada
+        };
+
+        await addDoc(collection(db, "users", userUid, "arquivos"), novoArquivo);
+        document.getElementById('formArquivo').reset();
+        alert("Arquivo enviado com sucesso!");
+      } catch (err) {
+        console.error("Erro ao enviar arquivo:", err);
+        alert("Erro ao salvar o arquivo. O arquivo pode ser muito pesado para o banco de dados.");
+      }
+    });
+
+    window.excluirArquivo = async function(id) {
+      if (confirm("Deseja realmente excluir este arquivo?")) {
+        try {
+          await deleteDoc(doc(db, "users", userUid, "arquivos", id));
+        } catch (err) {
+          console.error("Erro ao excluir arquivo:", err);
+          alert("Erro ao excluir arquivo.");
+        }
+      }
+    };
+
+    // Bloco de Notas Script
+    window.renderizarNotas = function() {
+      const container = document.getElementById('gridNotas');
+      if (!container) return;
+      container.innerHTML = '';
+
+      if (notas.length === 0) {
+        container.innerHTML = '<p style="color: #8d8d99;">Nenhuma nota criada ainda.</p>';
+        return;
+      }
+
+      notas.forEach(nota => {
+        const card = document.createElement('div');
+        card.className = 'card-arquivo';
+        card.style.background = '#18181b';
+
+        card.innerHTML = `
+          <div>
+            <span class="badge-tipo-arquivo" style="background: #202024; color: #04d361;">Bloco de Notas</span>
+            <h4 style="margin-top: 6px;">${escapeHtml(nota.titulo)}</h4>
+            <span style="font-size: 11px; color: #8d8d99;">Criado em: ${nota.dataFormatada || '-'}</span>
+          </div>
+          <div style="background: #121214; padding: 10px; border-radius: 6px; font-size: 13px; color: #e1e1e6; white-space: pre-wrap; max-height: 120px; overflow-y: auto;">${escapeHtml(nota.conteudo)}</div>
+          <div style="display: flex; gap: 8px; margin-top: auto; flex-wrap: wrap;">
+            <button type="button" class="btn-secundario" style="padding: 6px 10px; font-size: 12px;" onclick="prepararEdicaoNota('${nota.id}')">Editar</button>
+            <button type="button" style="padding: 6px 10px; font-size: 12px; background-color: #00875f; color: #fff; border: none; border-radius: 4px; font-weight: bold; cursor: pointer;" onclick="baixarNotaTxt('${nota.id}')">⬇ Baixar .txt</button>
+            <button type="button" class="btn-excluir" style="padding: 6px 10px; font-size: 12px;" onclick="excluirNota('${nota.id}')">Excluir</button>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+    };
+
+    document.getElementById('formBlocoNotas')?.addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const id = document.getElementById('notaIdEdicao').value;
+      const titulo = document.getElementById('tituloNota').value.trim();
+      const conteudo = document.getElementById('conteudoNota').value.trim();
+      const hoje = new Date();
+      const dataFormatada = hoje.toLocaleDateString('pt-BR') + ' ' + hoje.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+
+      try {
+        if (id) {
+          await updateDoc(doc(db, "users", userUid, "blocoNotas", id), {
+            titulo,
+            conteudo,
+            dataAtualizacao: hoje.toISOString()
+          });
+        } else {
+          await addDoc(collection(db, "users", userUid, "blocoNotas"), {
+            titulo,
+            conteudo,
+            dataCriacao: hoje.toISOString(),
+            dataFormatada
+          });
+        }
+        cancelarEdicaoNota();
+      } catch (err) {
+        console.error("Erro ao salvar nota:", err);
+        alert("Erro ao salvar nota.");
+      }
+    });
+
+    window.prepararEdicaoNota = function(id) {
+      const nota = notas.find(n => n.id === id);
+      if (!nota) return;
+      document.getElementById('notaIdEdicao').value = nota.id;
+      document.getElementById('tituloNota').value = nota.titulo;
+      document.getElementById('conteudoNota').value = nota.conteudo;
+      document.getElementById('btnSalvarNota').textContent = "Atualizar Nota";
+      document.getElementById('btnCancelarNota').style.display = "inline-block";
+      window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+    };
+
+    window.cancelarEdicaoNota = function() {
+      document.getElementById('formBlocoNotas').reset();
+      document.getElementById('notaIdEdicao').value = '';
+      document.getElementById('btnSalvarNota').textContent = "Salvar Nota";
+      document.getElementById('btnCancelarNota').style.display = "none";
+    };
+
+    window.excluirNota = async function(id) {
+      if (confirm("Deseja realmente excluir esta nota?")) {
+        try {
+          await deleteDoc(doc(db, "users", userUid, "blocoNotas", id));
+        } catch (err) {
+          console.error("Erro ao excluir nota:", err);
+          alert("Erro ao excluir nota.");
+        }
+      }
+    };
+
+    window.baixarNotaTxt = function(id) {
+      const nota = notas.find(n => n.id === id);
+      if (!nota) return;
+      const blob = new Blob([nota.conteudo], { type: 'text/plain;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${nota.titulo.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.txt`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    };
+
+    // ==========================================
+    // 7. INICIALIZAÇÃO E AUTENTICAÇÃO
     // ==========================================
     async function initApp(uid) {
       if (isAppInitialized) return;
@@ -2474,7 +3038,9 @@
         await Promise.all([
           carregarDadosDiario(uid),
           carregarDadosSwing(uid),
-          carregarDadosMesas(uid)
+          carregarDadosMesas(uid),
+          carregarDadosArquivos(uid),
+          carregarDadosNotas(uid)
         ]);
 
         const hoje = new Date();
